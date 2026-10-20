@@ -4,3 +4,8 @@ __pycache__/
 .DS_Store
 *.swp
 *~
+
+# Catatan Pribadi / Internal Developer (Private Docs)
+DOKUMENTASI_PRIBADI_HARDWARE.md
+*PRIBADI*
+*.private.md
