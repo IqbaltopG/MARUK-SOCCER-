@@ -27,9 +27,22 @@ Robot ini dirancang khusus untuk mematuhi **Buku Panduan Teknis (Juknis) Resmi M
 
 ## 🛠️ Panduan Tuning di Dunia Nyata (Hardware Calibration & Variables)
 
-Di dunia nyata, motor kuning dan karpet lapangan asli memiliki karakteristik fisika berbeda dari simulasi. Buka file [`firmware/MarukSoccer/MarukSoccer.ino`](firmware/MarukSoccer/MarukSoccer.ino) baris 26-45, ada 4 variabel utama yang bisa kamu ubah dengan sangat mudah:
+Di dunia nyata, motor kuning dan karpet lapangan asli memiliki karakteristik fisika berbeda dari simulasi. **Kamu TIDAK PERLU flash ulang setiap kali mau tuning!** ESP32 sudah dilengkapi **Web Dashboard di Browser HP** dan dukungan **Knob Remote Drone**:
 
-### 1. `MAX_PWM` (Batas Gas Tertinggi: 0 - 255)
+### 📱 Cara 1: Web Dashboard di Browser HP (Buka http://192.168.4.1)
+1. Sambungkan WiFi HP ke hotspot: **`MARUK_SOCCER_01`** (Password: `maruk123`).
+2. Buka browser (Chrome / Safari), ketik: **`192.168.4.1`**.
+3. Di layar HP akan muncul slider interaktif:
+   * **MAX SPEED (Batas Gas)**: 120 - 255.
+   * **MIN PWM (Ambang Start)**: 40 - 100.
+   * **TRIM KIRI & KANAN**: Kalibrasi jalan lurus.
+4. Geser slider dan klik tombol **"SIMPAN SETTINGAN KE CHIP"**. Pengaturan langsung aktif dan otomatis tersimpan permanen di memori NVS ESP32 (tidak akan hilang saat robot dimatikan)!
+
+### 🎛️ Cara 2: Knob Putar / VR Dial di Remote Drone
+Jika receiver remote drone mengirimkan channel ke-3 via serial (`Vx, Omega, Knob`), putaran knob (VRA / VRB) di remote drone otomatis menyesuaikan `MAX_PWM` secara instan tanpa buka web!
+
+### 💻 Cara 3: Edit Manual di Firmware (Permanen)
+Buka file [`firmware/MarukSoccer/MarukSoccer.ino`](firmware/MarukSoccer/MarukSoccer.ino) baris 26-45:
 ```cpp
 int MAX_PWM = 255;  // Default: 255 (Full Gas 100%)
 ```

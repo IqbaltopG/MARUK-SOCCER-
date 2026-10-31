@@ -9,3 +9,5 @@ __pycache__/
 DOKUMENTASI_PRIBADI_HARDWARE.md
 *PRIBADI*
 *.private.md
+*.wbproj
+.*.wbproj
