@@ -30,8 +30,11 @@ def compute_differential_speeds(
       omega : Angular velocity (Turn Right / Clockwise: +1.0, Turn Left / CCW: -1.0)
       
     Differential mixing:
-      left  = vx - omega
-      right = vx + omega
+      Turn Right (omega > 0) -> Left wheel speeds up (+), Right wheel slows/reverses (-)
+      Turn Left  (omega < 0) -> Left wheel slows/reverses (-), Right wheel speeds up (+)
+      
+      left  = vx + omega
+      right = vx - omega
       
     Returns:
       dict with keys: 'left', 'right' scaled to [-max_speed, max_speed]
@@ -39,8 +42,8 @@ def compute_differential_speeds(
     vx = apply_deadzone(vx, deadzone)
     omega = apply_deadzone(omega, deadzone)
 
-    left = vx - omega
-    right = vx + omega
+    left = vx + omega
+    right = vx - omega
 
     # Normalize if any wheel exceeds 1.0 (preserves turn arc)
     max_val = max(abs(left), abs(right))

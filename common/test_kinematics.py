@@ -26,20 +26,19 @@ class TestSoccerKinematics(unittest.TestCase):
         self.assertAlmostEqual(speeds["left"], -1.0)
         self.assertAlmostEqual(speeds["right"], -1.0)
 
-    def test_diff_spin_clockwise(self):
-        # Rotate CW: left forward, right backward
+    def test_diff_spin_clockwise_turn_right(self):
+        # Rotate CW (Turn Right, omega=+1.0): Left forward, Right backward
         speeds = compute_differential_speeds(vx=0.0, omega=1.0)
-        self.assertAlmostEqual(speeds["left"], -1.0)
-        self.assertAlmostEqual(speeds["right"], 1.0)
-
-    def test_diff_spin_counter_clockwise(self):
-        # Rotate CCW: left backward, right forward
-        speeds = compute_differential_speeds(vx=0.0, omega=-1.0)
         self.assertAlmostEqual(speeds["left"], 1.0)
         self.assertAlmostEqual(speeds["right"], -1.0)
 
+    def test_diff_spin_counter_clockwise_turn_left(self):
+        # Rotate CCW (Turn Left, omega=-1.0): Left backward, Right forward
+        speeds = compute_differential_speeds(vx=0.0, omega=-1.0)
+        self.assertAlmostEqual(speeds["left"], -1.0)
+        self.assertAlmostEqual(speeds["right"], 1.0)
+
     def test_diff_normalization_over_limit(self):
-        # Full forward (1.0) + full turn right (1.0)
         speeds = compute_differential_speeds(vx=1.0, omega=1.0)
         self.assertLessEqual(abs(speeds["left"]), 1.0001)
         self.assertLessEqual(abs(speeds["right"]), 1.0001)

@@ -42,8 +42,8 @@ inline DiffSpeeds compute_diff_speeds(
     vx = apply_deadzone(vx, deadzone);
     omega = apply_deadzone(omega, deadzone);
 
-    float left = vx - omega;
-    float right = vx + omega;
+    float left = vx + omega;
+    float right = vx - omega;
 
     float max_val = fabsf(left);
     if (fabsf(right) > max_val) max_val = fabsf(right);
