@@ -18,17 +18,42 @@
 #include "pinout_config.h"
 #include "kinematics.h"
 
-// WiFi Teleop Configuration (Fallback / Testing di Laptop)
+// ==========================================
+// 🛠️ VARIABEL TUNING FISIK (DUNIA NYATA)
+// Ubah angka-angka di bawah ini saat setting di lapangan:
+// ==========================================
+
+// 1. Kecepatan Maksimal (Batas Gas: 0 - 255)
+//    Setel 200-220 jika di karpet licin / bola mudah mental
+//    Setel 255 untuk kecepatan sprint penuh
+int MAX_PWM = 255;
+
+// 2. Ambang Awal Gerak Motor (Deadband: 40 - 80)
+//    Motor kuning butuh voltase minimum untuk mulai muter gearbox.
+//    Jika stik digerakkan sedikit tapi motor hanya berdengung belum jalan, naikkan angka ini (misal 65-70).
+int MIN_PWM = 60;
+
+// 3. Kalibrasi Jalan Lurus (Trim Motor Kiri vs Kanan: 0.80 - 1.00)
+//    Dua motor kuning murah sering memiliki selisih RPM pabrik.
+//    - Jika robot belok sendiri ke KIRI saat maju lurus -> kurangi TRIM_RIGHT (misal 0.93)
+//    - Jika robot belok sendiri ke KANAN saat maju lurus -> kurangi TRIM_LEFT (misal 0.93)
+float TRIM_LEFT  = 1.00f;
+float TRIM_RIGHT = 1.00f;
+
+// 4. Batas Waktu Darurat Failsafe (Milidetik)
+//    Jika sinyal remote terputus lebih dari waktu ini, motor otomatis mati.
+const unsigned long FAILSAFE_TIMEOUT_MS = 350;
+
+// ==========================================
+// WIFI TELEOP CONFIGURATION (FALLBACK / TESTING)
+// ==========================================
 const char* AP_SSID = "MARUK_SOCCER_01";
 const char* AP_PASS = "maruk123";
 const unsigned int UDP_PORT = 5005;
 
 WiFiUDP udp;
 char packetBuffer[256];
-
-// Failsafe & Timing
 unsigned long lastCommandTime = 0;
-const unsigned long FAILSAFE_TIMEOUT_MS = 350;
 
 // ==========================================
 // LAYER 3: ACT (Hardware Actuators - 1x L298N)
@@ -57,32 +82,40 @@ void initHardware() {
 }
 
 void driveMotorLeft(float speed) {
-    // speed: -1.0 to +1.0
-    int pwm = constrain((int)(fabsf(speed) * 255.0f), 0, 255);
-    if (speed > 0.05f) {
+    if (fabsf(speed) < 0.05f) {
+        ledcWrite(PIN_LEFT_IN1, 0);
+        ledcWrite(PIN_LEFT_IN2, 0);
+        return;
+    }
+    float scaled = fabsf(speed) * TRIM_LEFT;
+    int pwm = MIN_PWM + (int)(scaled * (MAX_PWM - MIN_PWM));
+    pwm = constrain(pwm, 0, 255);
+
+    if (speed > 0.0f) {
         ledcWrite(PIN_LEFT_IN1, pwm);
         ledcWrite(PIN_LEFT_IN2, 0);
-    } else if (speed < -0.05f) {
-        ledcWrite(PIN_LEFT_IN1, 0);
-        ledcWrite(PIN_LEFT_IN2, pwm);
     } else {
         ledcWrite(PIN_LEFT_IN1, 0);
-        ledcWrite(PIN_LEFT_IN2, 0);
+        ledcWrite(PIN_LEFT_IN2, pwm);
     }
 }
 
 void driveMotorRight(float speed) {
-    // speed: -1.0 to +1.0
-    int pwm = constrain((int)(fabsf(speed) * 255.0f), 0, 255);
-    if (speed > 0.05f) {
+    if (fabsf(speed) < 0.05f) {
+        ledcWrite(PIN_RIGHT_IN3, 0);
+        ledcWrite(PIN_RIGHT_IN4, 0);
+        return;
+    }
+    float scaled = fabsf(speed) * TRIM_RIGHT;
+    int pwm = MIN_PWM + (int)(scaled * (MAX_PWM - MIN_PWM));
+    pwm = constrain(pwm, 0, 255);
+
+    if (speed > 0.0f) {
         ledcWrite(PIN_RIGHT_IN3, pwm);
         ledcWrite(PIN_RIGHT_IN4, 0);
-    } else if (speed < -0.05f) {
-        ledcWrite(PIN_RIGHT_IN3, 0);
-        ledcWrite(PIN_RIGHT_IN4, pwm);
     } else {
         ledcWrite(PIN_RIGHT_IN3, 0);
-        ledcWrite(PIN_RIGHT_IN4, 0);
+        ledcWrite(PIN_RIGHT_IN4, pwm);
     }
 }
 
@@ -105,13 +138,13 @@ void setup() {
     Serial.println("[MARUK] 2WD Car Soccer Robot Starting...");
     Serial.println("[MARUK] Regulations: MIT-WEEK 2026 Compliant");
     Serial.println("[MARUK] Motors: 2x Yellow TT Motors (1x L298N)");
-    Serial.println("[MARUK] Caster: 1x / 2x Balance Spheres");
+    Serial.printf("[MARUK] Config: MIN_PWM=%d | MAX_PWM=%d\n", MIN_PWM, MAX_PWM);
+    Serial.printf("[MARUK] Trim:   LEFT=%.2f | RIGHT=%.2f\n", TRIM_LEFT, TRIM_RIGHT);
     Serial.println("[MARUK] =========================================");
 
     initHardware();
 
     // Init Hardware Serial2 untuk Receiver Drone di GPIO 16 (RX)
-    // Mendukung SBUS (100k inverted) atau IBUS (115.2k 8N1)
     Serial2.begin(115200, SERIAL_8N1, PIN_RC_RX, -1);
     Serial.printf("[MARUK] Drone Receiver listening on GPIO %d (Serial2)\n", PIN_RC_RX);
 
@@ -146,10 +179,7 @@ void loop() {
     // ------------------------------------------
     // 1. SENSE: BACA RECEIVER REMOTE DRONE (SERIAL2)
     // ------------------------------------------
-    if (Serial2.available() >= 6) {
-        // Simple serial RC packet parser:
-        // Format teks cepat: "V,O\n" misal "1.0,-0.5\n"
-        // Atau buffer packet byte
+    if (Serial2.available() >= 4) {
         String line = Serial2.readStringUntil('\n');
         line.trim();
         int commaIdx = line.indexOf(',');
@@ -171,7 +201,6 @@ void loop() {
         if (len > 0) {
             packetBuffer[len] = '\0';
             
-            // Format JSON: {"vx": ..., "w": ...}
             char* p_vx = strstr(packetBuffer, "\"vx\":");
             char* p_w  = strstr(packetBuffer, "\"w\":");
 
@@ -189,7 +218,7 @@ void loop() {
     // ------------------------------------------
     if (millis() - lastCommandTime > FAILSAFE_TIMEOUT_MS) {
         emergencyStop();
-        return; // Hentikan motor jika sinyal hilang > 350ms
+        return;
     }
 
     // ------------------------------------------
