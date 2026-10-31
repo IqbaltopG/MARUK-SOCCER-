@@ -1,9 +1,15 @@
 /**
- * MARUK (SOCCER) - Production ESP32 Firmware
- * Micro-Architecture for Robotic Universal Kernel (Soccer Edition)
+ * MARUK (SOCCER) - Production ESP32 Firmware (2WD Edition)
+ * Conforms 100% to MIT-WEEK 2026 Car Soccer Rules.
  * 
- * Hardware: ESP32 + 4-Wheel Mecanum Drive + Dribbler + Kicker
- * Protocol: UDP Teleoperation over WiFi (Port 5005)
+ * Hardware:
+ *   - ESP32 DevKit
+ *   - 1x Driver L298N
+ *   - 2x Motor Gearbox Kuning (TT Motor)
+ *   - 1x atau 2x Roda Kastor Penyeimbang (Pasif)
+ *   - 1x Receiver Drone (Port Serial2 RX / GPIO 16)
+ *   - 1x LM2596 (Setel output ke 5.0V)
+ * 
  * Architecture: SENSE -> THINK -> ACT
  */
 
@@ -12,8 +18,7 @@
 #include "pinout_config.h"
 #include "kinematics.h"
 
-// WiFi Configuration
-// Mode AP: ESP32 pembuat hotspot sendiri, langsung konek laptop ke sini!
+// WiFi Teleop Configuration (Fallback / Testing di Laptop)
 const char* AP_SSID = "MARUK_SOCCER_01";
 const char* AP_PASS = "maruk123";
 const unsigned int UDP_PORT = 5005;
@@ -21,175 +26,180 @@ const unsigned int UDP_PORT = 5005;
 WiFiUDP udp;
 char packetBuffer[256];
 
-// State & Failsafe
-unsigned long lastPacketTime = 0;
+// Failsafe & Timing
+unsigned long lastCommandTime = 0;
 const unsigned long FAILSAFE_TIMEOUT_MS = 350;
 
-// Kicker Pulse Safety Timer
-unsigned long kickerTriggerTime = 0;
-const unsigned long KICKER_PULSE_MS = 50; // 50ms pulse max
-bool isKicking = false;
-
 // ==========================================
-// LAYER 3: ACT (Hardware Motor Actuators)
+// LAYER 3: ACT (Hardware Actuators - 1x L298N)
 // ==========================================
 void initHardware() {
     pinMode(PIN_STATUS_LED, OUTPUT);
     digitalWrite(PIN_STATUS_LED, LOW);
 
-    // Kicker Pin
-    pinMode(PIN_KICKER_SOLENOID, OUTPUT);
-    digitalWrite(PIN_KICKER_SOLENOID, LOW);
+    // Setup 4 Pin Logika L298N
+    pinMode(PIN_LEFT_IN1, OUTPUT);
+    pinMode(PIN_LEFT_IN2, OUTPUT);
+    pinMode(PIN_RIGHT_IN3, OUTPUT);
+    pinMode(PIN_RIGHT_IN4, OUTPUT);
 
-    // Motor Direction Pins
-    pinMode(PIN_FL_DIR, OUTPUT);
-    pinMode(PIN_FR_DIR, OUTPUT);
-    pinMode(PIN_RL_DIR, OUTPUT);
-    pinMode(PIN_RR_DIR, OUTPUT);
-    pinMode(PIN_DRIBBLER_DIR, OUTPUT);
+    // Attach ESP32 LEDC PWM
+    ledcAttach(PIN_LEFT_IN1, PWM_FREQ_HZ, PWM_RESOLUTION_BITS);
+    ledcAttach(PIN_LEFT_IN2, PWM_FREQ_HZ, PWM_RESOLUTION_BITS);
+    ledcAttach(PIN_RIGHT_IN3, PWM_FREQ_HZ, PWM_RESOLUTION_BITS);
+    ledcAttach(PIN_RIGHT_IN4, PWM_FREQ_HZ, PWM_RESOLUTION_BITS);
 
-    // Setup ESP32 PWM Channels (LEDC)
-    // fl=0, fr=1, rl=2, rr=3, dribbler=4
-    ledcAttach(PIN_FL_PWM, PWM_FREQ_HZ, PWM_RESOLUTION_BITS);
-    ledcAttach(PIN_FR_PWM, PWM_FREQ_HZ, PWM_RESOLUTION_BITS);
-    ledcAttach(PIN_RL_PWM, PWM_FREQ_HZ, PWM_RESOLUTION_BITS);
-    ledcAttach(PIN_RR_PWM, PWM_FREQ_HZ, PWM_RESOLUTION_BITS);
-    ledcAttach(PIN_DRIBBLER_PWM, PWM_FREQ_HZ, PWM_RESOLUTION_BITS);
-
-    // Stop all motors initially
-    ledcWrite(PIN_FL_PWM, 0);
-    ledcWrite(PIN_FR_PWM, 0);
-    ledcWrite(PIN_RL_PWM, 0);
-    ledcWrite(PIN_RR_PWM, 0);
-    ledcWrite(PIN_DRIBBLER_PWM, 0);
+    // Stop motor initially
+    ledcWrite(PIN_LEFT_IN1, 0);
+    ledcWrite(PIN_LEFT_IN2, 0);
+    ledcWrite(PIN_RIGHT_IN3, 0);
+    ledcWrite(PIN_RIGHT_IN4, 0);
 }
 
-void driveSingleMotor(int pwmPin, int dirPin, float speedNormalized) {
-    // speedNormalized: -1.0 to +1.0
-    int pwmVal = constrain((int)(fabsf(speedNormalized) * 255.0f), 0, 255);
-    bool forward = (speedNormalized >= 0.0f);
-
-    digitalWrite(dirPin, forward ? HIGH : LOW);
-    ledcWrite(pwmPin, pwmVal);
-}
-
-void actuateMotors(const WheelSpeeds& speeds, bool dribbleActive, bool kickTrigger) {
-    // 1. Wheels
-    driveSingleMotor(PIN_FL_PWM, PIN_FL_DIR, speeds.fl);
-    driveSingleMotor(PIN_FR_PWM, PIN_FR_DIR, speeds.fr);
-    driveSingleMotor(PIN_RL_PWM, PIN_RL_DIR, speeds.rl);
-    driveSingleMotor(PIN_RR_PWM, PIN_RR_DIR, speeds.rr);
-
-    // 2. Dribbler Roller
-    digitalWrite(PIN_DRIBBLER_DIR, HIGH);
-    ledcWrite(PIN_DRIBBLER_PWM, dribbleActive ? 220 : 0);
-
-    // 3. Kicker Solenoid (Pulse safety)
-    if (kickTrigger && !isKicking) {
-        digitalWrite(PIN_KICKER_SOLENOID, HIGH);
-        kickerTriggerTime = millis();
-        isKicking = true;
+void driveMotorLeft(float speed) {
+    // speed: -1.0 to +1.0
+    int pwm = constrain((int)(fabsf(speed) * 255.0f), 0, 255);
+    if (speed > 0.05f) {
+        ledcWrite(PIN_LEFT_IN1, pwm);
+        ledcWrite(PIN_LEFT_IN2, 0);
+    } else if (speed < -0.05f) {
+        ledcWrite(PIN_LEFT_IN1, 0);
+        ledcWrite(PIN_LEFT_IN2, pwm);
+    } else {
+        ledcWrite(PIN_LEFT_IN1, 0);
+        ledcWrite(PIN_LEFT_IN2, 0);
     }
+}
 
-    if (isKicking && (millis() - kickerTriggerTime >= KICKER_PULSE_MS)) {
-        digitalWrite(PIN_KICKER_SOLENOID, LOW);
-        isKicking = false;
+void driveMotorRight(float speed) {
+    // speed: -1.0 to +1.0
+    int pwm = constrain((int)(fabsf(speed) * 255.0f), 0, 255);
+    if (speed > 0.05f) {
+        ledcWrite(PIN_RIGHT_IN3, pwm);
+        ledcWrite(PIN_RIGHT_IN4, 0);
+    } else if (speed < -0.05f) {
+        ledcWrite(PIN_RIGHT_IN3, 0);
+        ledcWrite(PIN_RIGHT_IN4, pwm);
+    } else {
+        ledcWrite(PIN_RIGHT_IN3, 0);
+        ledcWrite(PIN_RIGHT_IN4, 0);
     }
 }
 
 void emergencyStop() {
-    ledcWrite(PIN_FL_PWM, 0);
-    ledcWrite(PIN_FR_PWM, 0);
-    ledcWrite(PIN_RL_PWM, 0);
-    ledcWrite(PIN_RR_PWM, 0);
-    ledcWrite(PIN_DRIBBLER_PWM, 0);
-    digitalWrite(PIN_KICKER_SOLENOID, LOW);
-    isKicking = false;
+    ledcWrite(PIN_LEFT_IN1, 0);
+    ledcWrite(PIN_LEFT_IN2, 0);
+    ledcWrite(PIN_RIGHT_IN3, 0);
+    ledcWrite(PIN_RIGHT_IN4, 0);
     digitalWrite(PIN_STATUS_LED, LOW);
 }
 
 // ==========================================
-// SETUP & MAIN LOOP
+// SETUP
 // ==========================================
 void setup() {
     Serial.begin(115200);
     delay(200);
 
     Serial.println("\n[MARUK] =========================================");
-    Serial.println("[MARUK] ESP32 Soccer Bot Firmware Starting...");
+    Serial.println("[MARUK] 2WD Car Soccer Robot Starting...");
+    Serial.println("[MARUK] Regulations: MIT-WEEK 2026 Compliant");
+    Serial.println("[MARUK] Motors: 2x Yellow TT Motors (1x L298N)");
+    Serial.println("[MARUK] Caster: 1x / 2x Balance Spheres");
     Serial.println("[MARUK] =========================================");
 
     initHardware();
 
-    // Start WiFi Access Point
+    // Init Hardware Serial2 untuk Receiver Drone di GPIO 16 (RX)
+    // Mendukung SBUS (100k inverted) atau IBUS (115.2k 8N1)
+    Serial2.begin(115200, SERIAL_8N1, PIN_RC_RX, -1);
+    Serial.printf("[MARUK] Drone Receiver listening on GPIO %d (Serial2)\n", PIN_RC_RX);
+
+    // Nyalakan WiFi Access Point sebagai fallback / testing di laptop
     WiFi.mode(WIFI_AP);
     WiFi.softAP(AP_SSID, AP_PASS);
     IPAddress myIP = WiFi.softAPIP();
 
-    Serial.print("[MARUK] Hotspot AP Created: ");
+    Serial.print("[MARUK] Fallback WiFi Hotspot: ");
     Serial.println(AP_SSID);
-    Serial.print("[MARUK] Bot IP Address:     ");
+    Serial.print("[MARUK] Bot IP:                 ");
     Serial.println(myIP);
 
     udp.begin(UDP_PORT);
     Serial.printf("[MARUK] UDP Server listening on port %d\n", UDP_PORT);
 
-    // Blink status LED 3 times
+    // Kedipkan LED status 3 kali
     for (int i = 0; i < 3; i++) {
         digitalWrite(PIN_STATUS_LED, HIGH); delay(100);
         digitalWrite(PIN_STATUS_LED, LOW); delay(100);
     }
 }
 
+// ==========================================
+// MAIN LOOP
+// ==========================================
 void loop() {
-    // ------------------------------------------
-    // LAYER 1: SENSE (Read UDP Packet)
-    // ------------------------------------------
-    float vx = 0.0f, vy = 0.0f, omega = 0.0f;
-    int kick = 0, dribble = 0;
-    bool packetReceived = false;
+    float vx = 0.0f;
+    float omega = 0.0f;
+    bool commandReceived = false;
 
+    // ------------------------------------------
+    // 1. SENSE: BACA RECEIVER REMOTE DRONE (SERIAL2)
+    // ------------------------------------------
+    if (Serial2.available() >= 6) {
+        // Simple serial RC packet parser:
+        // Format teks cepat: "V,O\n" misal "1.0,-0.5\n"
+        // Atau buffer packet byte
+        String line = Serial2.readStringUntil('\n');
+        line.trim();
+        int commaIdx = line.indexOf(',');
+        if (commaIdx > 0) {
+            vx = line.substring(0, commaIdx).toFloat();
+            omega = line.substring(commaIdx + 1).toFloat();
+            commandReceived = true;
+            lastCommandTime = millis();
+            digitalWrite(PIN_STATUS_LED, HIGH);
+        }
+    }
+
+    // ------------------------------------------
+    // 2. SENSE: FALLBACK BACA WIFI UDP
+    // ------------------------------------------
     int packetSize = udp.parsePacket();
     if (packetSize > 0) {
         int len = udp.read(packetBuffer, sizeof(packetBuffer) - 1);
         if (len > 0) {
             packetBuffer[len] = '\0';
             
-            // Format: {"vx": ..., "vy": ..., "w": ..., "k": ..., "d": ...}
-            // Fast zero-dependency parsing:
+            // Format JSON: {"vx": ..., "w": ...}
             char* p_vx = strstr(packetBuffer, "\"vx\":");
-            char* p_vy = strstr(packetBuffer, "\"vy\":");
             char* p_w  = strstr(packetBuffer, "\"w\":");
-            char* p_k  = strstr(packetBuffer, "\"k\":");
-            char* p_d  = strstr(packetBuffer, "\"d\":");
 
             if (p_vx) vx = atof(p_vx + 5);
-            if (p_vy) vy = atof(p_vy + 5);
             if (p_w)  omega = atof(p_w + 4);
-            if (p_k)  kick = atoi(p_k + 4);
-            if (p_d)  dribble = atoi(p_d + 4);
 
-            lastPacketTime = millis();
-            packetReceived = true;
+            commandReceived = true;
+            lastCommandTime = millis();
             digitalWrite(PIN_STATUS_LED, HIGH);
         }
     }
 
     // ------------------------------------------
-    // SAFETY FAILSAFE WATCHDOG
+    // FAILSAFE WATCHDOG
     // ------------------------------------------
-    if (millis() - lastPacketTime > FAILSAFE_TIMEOUT_MS) {
+    if (millis() - lastCommandTime > FAILSAFE_TIMEOUT_MS) {
         emergencyStop();
-        return; // Skip execution if connection lost
+        return; // Hentikan motor jika sinyal hilang > 350ms
     }
 
     // ------------------------------------------
-    // LAYER 2: THINK (Kinematics)
+    // 3. THINK: KINEMATIKA 2WD DIFFERENTIAL
     // ------------------------------------------
-    WheelSpeeds targetSpeeds = compute_mecanum_speeds(vx, vy, omega, 1.0f, 0.08f);
+    DiffSpeeds speeds = compute_diff_speeds(vx, omega, 1.0f, 0.08f);
 
     // ------------------------------------------
-    // LAYER 3: ACT (Drive Hardware)
+    // 4. ACT: DRIVE MOTOR KIRI & KANAN
     // ------------------------------------------
-    actuateMotors(targetSpeeds, dribble > 0, kick > 0);
+    driveMotorLeft(speeds.left);
+    driveMotorRight(speeds.right);
 }

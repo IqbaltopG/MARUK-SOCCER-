@@ -6,555 +6,348 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 
 WorldInfo {
   info [
-    "A soccer game."
-    "This example demonstrates several capabilities of the supervisor:"
-    "- read and modify the position of objects"
-    "- display text on the simulation window"
-    "- send messages to robot controllers"
+    "MIT-WEEK 2026 Robot Car Soccer Arena"
+    "Field: 244 cm x 122 cm"
+    "Goals: 38 cm x 20 cm"
+    "Ball: 4 cm Pingpong Ball"
+    "Robot: MARUK 2WD + Caster + Flat Board (< 18x18 cm)"
   ]
-  title "Soccer Game"
-  optimalThreadCount 8
+  title "MIT-WEEK 2026 Robot Soccer"
+  basicTimeStep 16
 }
 Viewpoint {
-  orientation 0.251373707362422 -0.5312808559637874 -0.8090438253477107 5.22481331228121
-  position -1.4893505881226752 -1.770666324752664 1.4413878323834504
+  orientation 0.28 -0.45 -0.85 5.1
+  position -1.8 -2.4 2.2
 }
 TexturedBackground {
 }
 TexturedBackgroundLight {
 }
+
+# ==========================================
+# ARENA RESMI MIT-WEEK 2026 (244 cm x 122 cm)
+# ==========================================
 DEF SOCCER_FIELD Solid {
   children [
+    # Lapangan Karpet Hijau (2.44m x 1.22m)
     DEF GROUND Shape {
       appearance PBRAppearance {
-        baseColorMap ImageTexture {
-          url [
-            "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/samples/demos/worlds/textures/soccer/soccer-256.jpg"
-          ]
-        }
-        roughness 1
-        metalness 0
+        baseColor 0.08 0.45 0.15
+        roughness 0.8
+        metalness 0.1
       }
       geometry Plane {
-        size 1.5 1.5
+        size 2.44 1.22
       }
     }
-    DEF YELLOW_GOAL_GROUND Shape {
-      appearance PBRAppearance {
-        baseColorMap ImageTexture {
-          url [
-            "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/samples/demos/worlds/textures/soccer/soccer-256.jpg"
-          ]
+    # Garis Tengah Putih
+    Pose {
+      translation 0 0 0.001
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.95 0.95 0.95
+            roughness 0.6
+          }
+          geometry Box {
+            size 0.02 1.22 0.001
+          }
         }
-        roughness 1
-        metalness 0
-      }
-      geometry IndexedFaceSet {
-        coord Coordinate {
-          point [
-            -0.95 -0.75 0
-            -0.75 -0.75 0
-            -0.75 0.75 0
-            -0.95 0.75 0
-          ]
-        }
-        texCoord TextureCoordinate {
-          point [
-            0 0
-            0 0
-            0 0
-            0 0
-          ]
-        }
-        coordIndex [
-          0, 1, 2, 3
-        ]
-        texCoordIndex [
-          0, 1, 2, 3
-        ]
-      }
+      ]
     }
-    DEF BLUE_GOAL_GROUND Shape {
-      appearance PBRAppearance {
-        baseColorMap ImageTexture {
-          url [
-            "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/samples/demos/worlds/textures/soccer/soccer-256.jpg"
-          ]
+    # Lingkaran Tengah Putih
+    Pose {
+      translation 0 0 0.001
+      rotation 1 0 0 0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.95 0.95 0.95
+            roughness 0.6
+          }
+          geometry Cylinder {
+            height 0.001
+            radius 0.20
+          }
         }
-        roughness 1
-        metalness 0
-      }
-      geometry IndexedFaceSet {
-        coord Coordinate {
-          point [
-            0.95 -0.75 0
-            0.75 -0.75 0
-            0.75 0.75 0
-            0.95 0.75 0
-          ]
-        }
-        texCoord TextureCoordinate {
-          point [
-            0 0
-            0 0
-            0 0
-            0 0
-          ]
-        }
-        ccw FALSE
-        coordIndex [
-          0, 1, 2, 3
-        ]
-        texCoordIndex [
-          0, 1, 2, 3
-        ]
-      }
+      ]
     }
-    DEF NORTH_WALL Shape {
-      appearance DEF WALL_APPEARANCE PBRAppearance {
-        baseColor 0.388235 0.388235 0.388235
-        roughness 1
-        metalness 0
-      }
-      geometry IndexedFaceSet {
-        coord Coordinate {
-          point [
-            0.76 -0.66 0
-            0.76 -0.21 0
-            0.75 -0.21 0
-            0.75 -0.59 0
-            0.69 -0.65 0
-            -0.69 -0.65 0
-            -0.75 -0.59 0
-            -0.75 -0.21 0
-            -0.76 -0.21 0
-            -0.76 -0.65 0
-            -0.76 -0.66 0
-            0.76 -0.66 0.05
-            0.76 -0.21 0.05
-            0.75 -0.21 0.05
-            0.75 -0.59 0.05
-            0.69 -0.65 0.05
-            -0.69 -0.65 0.05
-            -0.75 -0.59 0.05
-            -0.75 -0.21 0.05
-            -0.76 -0.21 0.05
-            -0.76 -0.65 0.05
-            -0.76 -0.66 0.05
-          ]
+    # Dinding Utara (North Wall)
+    Pose {
+      translation 0 0.62 0.10
+      children [
+        DEF WALL_SHAPE Shape {
+          appearance PBRAppearance {
+            baseColor 0.82 0.82 0.78
+            roughness 0.5
+            metalness 0.1
+          }
+          geometry Box {
+            size 2.48 0.02 0.20
+          }
         }
-        coordIndex [
-          0, 10, 9, -1, 9, 8, 7, -1, 9, 7, 6, -1, 2, 1, 0, -1, 3, 2, 0, -1, 9, 6, 5, -1, 4, 3, 0, -1, 0, 9, 5, -1, 0, 5, 4, -1, 11, 12, 13, -1, 11, 13, 14, -1, 20, 21, 11, -1, 18, 19, 20, -1, 17, 18, 20, -1, 11, 14, 15, -1, 16, 17, 20, -1, 11, 15, 16, -1, 11, 16, 20, -1, 0, 1, 12, 11, -1, 1, 2, 13, 12, -1, 2, 3, 14, 13, -1, 3, 4, 15, 14, -1, 4, 5, 16, 15, -1, 5, 6, 17, 16, -1, 6, 7, 18, 17, -1, 7, 8, 19, 18, -1, 8, 9, 20, 19, -1, 9, 10, 21, 20, -1, 10, 0, 11, 21, -1
-        ]
-      }
+      ]
     }
-    DEF SOUTH_WALL Shape {
-      appearance USE WALL_APPEARANCE
-      geometry IndexedFaceSet {
-        coord Coordinate {
-          point [
-            0.76 0.66 0
-            -0.76 0.66 0
-            -0.76 0.65 0
-            -0.76 0.21 0
-            -0.75 0.21 0
-            -0.75 0.59 0
-            -0.69 0.65 0
-            0.69 0.65 0
-            0.75 0.59 0
-            0.75 0.21 0
-            0.76 0.21 0
-            0.76 0.66 0.05
-            -0.76 0.66 0.05
-            -0.76 0.65 0.05
-            -0.76 0.21 0.05
-            -0.75 0.21 0.05
-            -0.75 0.59 0.05
-            -0.69 0.65 0.05
-            0.69 0.65 0.05
-            0.75 0.59 0.05
-            0.75 0.21 0.05
-            0.76 0.21 0.05
-          ]
-        }
-        coordIndex [
-          0, 10, 9, -1, 0, 9, 8, -1, 2, 1, 0, -1, 4, 3, 2, -1, 5, 4, 2, -1, 0, 8, 7, -1, 6, 5, 2, -1, 0, 7, 6, -1, 0, 6, 2, -1, 11, 12, 13, -1, 13, 14, 15, -1, 13, 15, 16, -1, 20, 21, 11, -1, 19, 20, 11, -1, 13, 16, 17, -1, 18, 19, 11, -1, 11, 13, 17, -1, 11, 17, 18, -1, 0, 1, 12, 11, -1, 1, 2, 13, 12, -1, 2, 3, 14, 13, -1, 3, 4, 15, 14, -1, 4, 5, 16, 15, -1, 5, 6, 17, 16, -1, 6, 7, 18, 17, -1, 7, 8, 19, 18, -1, 8, 9, 20, 19, -1, 9, 10, 21, 20, -1, 10, 0, 11, 21, -1
-        ]
-      }
+    # Dinding Selatan (South Wall)
+    Pose {
+      translation 0 -0.62 0.10
+      children [
+        USE WALL_SHAPE
+      ]
     }
-    DEF BLUE_GOAL Shape {
-      appearance PBRAppearance {
-        baseColor 0 0 1
-        roughness 1
-        metalness 0
-      }
-      geometry IndexedFaceSet {
-        coord Coordinate {
-          point [
-            0.86 -0.21 0
-            0.86 0.21 0
-            0.75 0.21 0
-            0.75 0.2 0
-            0.85 0.2 0
-            0.85 -0.2 0
-            0.75 -0.2 0
-            0.75 -0.21 0
-            0.86 -0.21 0
-            0.86 -0.21 0.12
-            0.86 0.21 0.12
-            0.75 0.21 0.12
-            0.75 0.2 0.12
-            0.85 0.2 0.12
-            0.85 -0.2 0.12
-            0.75 -0.2 0.12
-            0.75 -0.21 0.12
-            0.86 -0.21 0.12
-          ]
+    # Dinding Barat Sisi Atas (West Upper)
+    Pose {
+      translation -1.23 0.405 0.10
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.82 0.82 0.78
+            roughness 0.5
+          }
+          geometry Box {
+            size 0.02 0.41 0.20
+          }
         }
-        coordIndex [
-          0, 1, 2, 3, 4, 5, 6, 7, 8, -1, 0, 1, 10, 9, -1, 1, 2, 11, 10, -1, 2, 3, 12, 11, -1, 3, 4, 13, 12, -1, 4, 5, 14, 13, -1, 5, 6, 15, 14, -1, 6, 7, 16, 15, -1, 7, 8, 17, 16, -1
-        ]
-      }
+      ]
     }
-    DEF YELLOW_GOAL Shape {
-      appearance PBRAppearance {
-        baseColor 1 1 0
-        roughness 1
-        metalness 0
-      }
-      geometry IndexedFaceSet {
-        coord Coordinate {
-          point [
-            -0.86 -0.21 0
-            -0.75 -0.21 0
-            -0.75 -0.2 0
-            -0.85 -0.2 0
-            -0.85 0.2 0
-            -0.75 0.2 0
-            -0.75 0.21 0
-            -0.86 0.21 0
-            -0.86 -0.21 0
-            -0.86 -0.21 0.12
-            -0.75 -0.21 0.12
-            -0.75 -0.2 0.12
-            -0.85 -0.2 0.12
-            -0.85 0.2 0.12
-            -0.75 0.2 0.12
-            -0.75 0.21 0.12
-            -0.86 0.21 0.12
-            -0.86 -0.21 0.12
-          ]
+    # Dinding Barat Sisi Bawah (West Lower)
+    Pose {
+      translation -1.23 -0.405 0.10
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.82 0.82 0.78
+            roughness 0.5
+          }
+          geometry Box {
+            size 0.02 0.41 0.20
+          }
         }
-        coordIndex [
-          0, 1, 2, 3, 4, 5, 6, 7, 8, -1, 0, 1, 10, 9, -1, 1, 2, 11, 10, -1, 2, 3, 12, 11, -1, 3, 4, 13, 12, -1, 4, 5, 14, 13, -1, 5, 6, 15, 14, -1, 6, 7, 16, 15, -1, 7, 8, 17, 16, -1
-        ]
-      }
+      ]
+    }
+    # Dinding Timur Sisi Atas (East Upper)
+    Pose {
+      translation 1.23 0.405 0.10
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.82 0.82 0.78
+            roughness 0.5
+          }
+          geometry Box {
+            size 0.02 0.41 0.20
+          }
+        }
+      ]
+    }
+    # Dinding Timur Sisi Bawah (East Lower)
+    Pose {
+      translation 1.23 -0.405 0.10
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.82 0.82 0.78
+            roughness 0.5
+          }
+          geometry Box {
+            size 0.02 0.41 0.20
+          }
+        }
+      ]
+    }
+    # Gawang Kuning (Barat: Lebar 38cm, Tinggi 20cm, Dalam 15cm)
+    Pose {
+      translation -1.31 0 0.10
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.7 0.1
+            roughness 0.3
+          }
+          geometry Box {
+            size 0.16 0.38 0.20
+          }
+        }
+      ]
+    }
+    # Gawang Biru (Timur: Lebar 38cm, Tinggi 20cm, Dalam 15cm)
+    Pose {
+      translation 1.31 0 0.10
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.1 0.4 0.9
+            roughness 0.3
+          }
+          geometry Box {
+            size 0.16 0.38 0.20
+          }
+        }
+      ]
     }
   ]
-  name "soccer field"
   boundingObject Group {
     children [
-      USE GROUND
-      DEF NOTH_BBOX Pose {
-        translation 0 0.655 0.0252
-        children [
-          Box {
-            size 1.5 0.01 0.05
-          }
-        ]
-      }
-      DEF SOUTH_BBOX Pose {
-        translation 0 -0.655 0.0251
-        children [
-          Box {
-            size 1.5 0.01 0.05
-          }
-        ]
-      }
-      DEF NW_BBOX Pose {
-        translation -0.755 0.43 0.0251
-        children [
-          Box {
-            size 0.01 0.435 0.05
-          }
-        ]
-      }
-      DEF NE_BBOX Pose {
-        translation 0.755 0.43 0.0251
-        children [
-          Box {
-            size 0.01 0.435 0.05
-          }
-        ]
-      }
-      DEF SW_BBOX Pose {
-        translation -0.755 -0.43 0.0251
-        children [
-          Box {
-            size 0.01 0.435 0.05
-          }
-        ]
-      }
-      DEF SE_BBOX Pose {
-        translation 0.755 -0.43 0.0251
-        children [
-          Box {
-            size 0.01 0.435 0.05
-          }
-        ]
-      }
-      DEF NWC_BBOX Pose {
-        translation 0.725 -0.62 0.0251
-        rotation 0 0 1 -0.7853
-        children [
-          Box {
-            size 0.01 0.09 0.05
-          }
-        ]
-      }
-      DEF NEC_BBOX Pose {
-        translation -0.725 -0.62 0.0251
-        rotation 0 0 1 0.7853
-        children [
-          Box {
-            size 0.01 0.09 0.05
-          }
-        ]
-      }
-      DEF SWC_BBOX Pose {
-        translation 0.725 0.62 0.0251
-        rotation 0 0 1 0.7853
-        children [
-          Box {
-            size 0.01 0.09 0.05
-          }
-        ]
-      }
-      DEF SEC_BBOX Pose {
-        translation -0.725 0.62 0.0251
-        rotation 0 0 1 -0.7853
-        children [
-          Box {
-            size 0.01 0.09 0.05
-          }
-        ]
-      }
-      DEF YG_BBOX Pose {
-        translation -0.855 0 0.061
-        children [
-          Box {
-            size 0.01 0.42 0.12
-          }
-        ]
-      }
-      DEF BG_BBOX Pose {
-        translation 0.855 0 0.061
-        children [
-          Box {
-            size 0.01 0.42 0.12
-          }
-        ]
-      }
-      DEF BGS_BBOX Pose {
-        translation 0.8 -0.205 0.061
-        children [
-          Box {
-            size 0.1 0.01 0.12
-          }
-        ]
-      }
-      DEF BGN_BBOX Pose {
-        translation 0.8 0.205 0.061
-        children [
-          Box {
-            size 0.1 0.01 0.12
-          }
-        ]
-      }
-      DEF YGS_BBOX Pose {
-        translation -0.8 -0.205 0.061
-        children [
-          Box {
-            size 0.1 0.01 0.12
-          }
-        ]
-      }
-      DEF YGN_BBOX Pose {
-        translation -0.8 0.205 0.061
-        children [
-          Box {
-            size 0.1 0.01 0.12
-          }
-        ]
-      }
+      # Lantai
+      Plane { size 2.44 1.22 }
+      # Dinding Utara & Selatan
+      Pose { translation 0 0.62 0.10 children [ Box { size 2.48 0.02 0.20 } ] }
+      Pose { translation 0 -0.62 0.10 children [ Box { size 2.48 0.02 0.20 } ] }
+      # Dinding Barat
+      Pose { translation -1.23 0.405 0.10 children [ Box { size 0.02 0.41 0.20 } ] }
+      Pose { translation -1.23 -0.405 0.10 children [ Box { size 0.02 0.41 0.20 } ] }
+      Pose { translation -1.39 0 0.10 children [ Box { size 0.02 0.40 0.20 } ] }
+      # Dinding Timur
+      Pose { translation 1.23 0.405 0.10 children [ Box { size 0.02 0.41 0.20 } ] }
+      Pose { translation 1.23 -0.405 0.10 children [ Box { size 0.02 0.41 0.20 } ] }
+      Pose { translation 1.39 0 0.10 children [ Box { size 0.02 0.40 0.20 } ] }
     ]
   }
   locked TRUE
 }
+
+# ==========================================
+# BOLA PINGPONG RESMI (Diameter 4cm, Massa 3g)
+# ==========================================
 DEF BALL SoccerBall {
-  translation 0.0 0.0 0.03
+  translation 0.0 0.0 0.02
   rotation 0 0 1 0
-  radius 0.021
-  mass 0.04
+  radius 0.02
+  mass 0.003
 }
+
+# ==========================================
+# ROBOT MARUK 2WD + KASTOR + PAPAN LURUS
+# Dimensi: 16cm x 16cm x 7cm (Lolos regulasi < 18x18cm)
+# ==========================================
 DEF MARUK_BOT Robot {
-  translation -0.35 0.0 0.038
+  translation -0.45 0.0 0.033
   rotation 0 0 1 0
   children [
+    # Sasis Utama (Chassis Box: 14cm panjang x 12cm lebar x 4cm tinggi)
     DEF BODY_SHAPE Shape {
       appearance PBRAppearance {
-        baseColor 0.1 0.15 0.2
-        roughness 0.3
-        metalness 0.7
-        emissiveColor 0 0.6 0.4
+        baseColor 0.15 0.18 0.22
+        roughness 0.4
+        metalness 0.6
       }
       geometry Box {
-        size 0.12 0.10 0.04
+        size 0.14 0.12 0.04
       }
     }
-    # Front-Left Wheel
+    # BUMPER DEPAN LURUS RESMI (STRICT FLAT BOARD)
+    # Panjang 16cm, Tinggi 5cm, Tebal 6mm - RATA TANPA LEKUKAN
+    Pose {
+      translation 0.073 0 0.005
+      children [
+        DEF FLAT_BUMPER Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.2 0.2
+            roughness 0.2
+            metalness 0.1
+          }
+          geometry Box {
+            size 0.006 0.16 0.05
+          }
+        }
+      ]
+    }
+    # Roda Kiri Belakang (Motor Kuning + Roda Karet Kuning Standard)
     HingeJoint {
       jointParameters HingeJointParameters {
         axis 0 1 0
-        anchor 0.035 0.055 -0.012
+        anchor -0.035 0.068 -0.002
       }
       device [
         RotationalMotor {
-          name "fl_motor"
+          name "left_motor"
         }
       ]
       endPoint Solid {
-        translation 0.035 0.055 -0.012
+        translation -0.035 0.068 -0.002
         rotation 1 0 0 1.5708
         children [
           DEF WHEEL_SHAPE Shape {
             appearance PBRAppearance {
-              baseColor 0.9 0.4 0.1
-              roughness 0.5
+              baseColor 0.95 0.75 0.1
+              roughness 0.6
               metalness 0.1
             }
             geometry Cylinder {
-              height 0.015
-              radius 0.022
+              height 0.026
+              radius 0.0325
             }
           }
         ]
-        name "fl_wheel"
+        name "left_wheel"
         boundingObject USE WHEEL_SHAPE
         physics DEF WHEEL_PHYSICS Physics {
           density -1
-          mass 0.015
+          mass 0.035
         }
       }
     }
-    # Front-Right Wheel
+    # Roda Kanan Belakang (Motor Kuning + Roda Karet Kuning Standard)
     HingeJoint {
       jointParameters HingeJointParameters {
         axis 0 1 0
-        anchor 0.035 -0.055 -0.012
+        anchor -0.035 -0.068 -0.002
       }
       device [
         RotationalMotor {
-          name "fr_motor"
+          name "right_motor"
         }
       ]
       endPoint Solid {
-        translation 0.035 -0.055 -0.012
+        translation -0.035 -0.068 -0.002
         rotation 1 0 0 1.5708
         children [
           USE WHEEL_SHAPE
         ]
-        name "fr_wheel"
+        name "right_wheel"
         boundingObject USE WHEEL_SHAPE
         physics USE WHEEL_PHYSICS
       }
     }
-    # Rear-Left Wheel
-    HingeJoint {
-      jointParameters HingeJointParameters {
-        axis 0 1 0
-        anchor -0.035 0.055 -0.012
-      }
-      device [
-        RotationalMotor {
-          name "rl_motor"
-        }
-      ]
-      endPoint Solid {
-        translation -0.035 0.055 -0.012
-        rotation 1 0 0 1.5708
-        children [
-          USE WHEEL_SHAPE
-        ]
-        name "rl_wheel"
-        boundingObject USE WHEEL_SHAPE
-        physics USE WHEEL_PHYSICS
-      }
-    }
-    # Rear-Right Wheel
-    HingeJoint {
-      jointParameters HingeJointParameters {
-        axis 0 1 0
-        anchor -0.035 -0.055 -0.012
-      }
-      device [
-        RotationalMotor {
-          name "rr_motor"
-        }
-      ]
-      endPoint Solid {
-        translation -0.035 -0.055 -0.012
-        rotation 1 0 0 1.5708
-        children [
-          USE WHEEL_SHAPE
-        ]
-        name "rr_wheel"
-        boundingObject USE WHEEL_SHAPE
-        physics USE WHEEL_PHYSICS
-      }
-    }
-    # Front Dribbler Roller
-    HingeJoint {
-      jointParameters HingeJointParameters {
-        axis 0 1 0
-        anchor 0.065 0.0 -0.005
-      }
-      device [
-        RotationalMotor {
-          name "dribbler_motor"
-        }
-      ]
-      endPoint Solid {
-        translation 0.065 0.0 -0.005
-        rotation 1 0 0 1.5708
-        children [
-          DEF DRIBBLER_SHAPE Shape {
-            appearance PBRAppearance {
-              baseColor 0.2 0.8 0.3
-              roughness 0.9
-              metalness 0
-            }
-            geometry Cylinder {
-              height 0.06
-              radius 0.01
-            }
+    # Roda Kastor 1 (Kastor Depan Kiri - Penyeimbang Pasif)
+    Pose {
+      translation 0.055 0.045 -0.02
+      children [
+        DEF CASTER_SHAPE Shape {
+          appearance PBRAppearance {
+            baseColor 0.8 0.8 0.85
+            roughness 0.1
+            metalness 0.9
           }
-        ]
-        name "dribbler_roller"
-        boundingObject USE DRIBBLER_SHAPE
-        physics Physics {
-          density -1
-          mass 0.01
+          geometry Sphere {
+            radius 0.0125
+          }
         }
-      }
+      ]
+    }
+    # Roda Kastor 2 (Kastor Depan Kanan - Penyeimbang Pasif)
+    Pose {
+      translation 0.055 -0.045 -0.02
+      children [
+        USE CASTER_SHAPE
+      ]
     }
   ]
   name "MARUK_SOCCER_BOT"
-  boundingObject USE BODY_SHAPE
+  boundingObject Group {
+    children [
+      # Bodi sasis
+      USE BODY_SHAPE
+      # Bumper lurus depan
+      Pose { translation 0.073 0 0.005 children [ Box { size 0.006 0.16 0.05 } ] }
+      # Kastor 1 & 2
+      Pose { translation 0.055 0.045 -0.02 children [ Sphere { radius 0.0125 } ] }
+      Pose { translation 0.055 -0.045 -0.02 children [ Sphere { radius 0.0125 } ] }
+    ]
+  }
   physics Physics {
     density -1
     mass 0.45
   }
   controller "maruk_soccer"
 }
-

@@ -1,25 +1,21 @@
 """
-MARUK (SOCCER) - Webots Robot Controller
-Architecture: Sense (UDP / Keyboard) -> Think (Mecanum Kinematics) -> Act (Motors & Kicker)
-
-Listens on UDP 0.0.0.0:5005 for commands from teleop/udp_sender.py.
-Also supports built-in Webots Keyboard when clicking inside the 3D window!
+MARUK (SOCCER) - Webots Robot Controller (2WD Differential Drive)
+Architecture: Sense (UDP / Webots Keyboard) -> Think (2WD Kinematics) -> Act (Left & Right Motors)
+Conforms 100% to MIT-WEEK 2026 Car Soccer Rules.
 """
 
 import sys
 import os
 import json
 import socket
-import select
 from controller import Robot, Keyboard
 
 # Add common directory to sys.path for kinematics
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "common")))
-from kinematics import compute_mecanum_speeds
+from kinematics import compute_differential_speeds
 
 TIME_STEP = 16          # 16 ms simulation step (~60 FPS physics)
-MAX_WHEEL_SPEED = 18.0  # Max rad/s for wheel motors
-DRIBBLER_SPEED = 30.0   # Fast spin for dribbler roller
+MAX_WHEEL_SPEED = 14.0  # Max rad/s for standard yellow TT motor (~200 RPM)
 UDP_PORT = 5005
 FAILSAFE_TIMEOUT_MS = 400
 
@@ -36,17 +32,14 @@ class InputSense:
         self.sock.setblocking(False)
 
         self.last_udp_time = 0
-        self.dribble_toggle = False
-        print(f"[MARUK SENSE] UDP Receiver listening on 0.0.0.0:{self.port}")
+        print(f"[MARUK SENSE] 2WD UDP Receiver listening on 0.0.0.0:{self.port}")
 
     def read(self, current_time_ms: int):
         """
-        Returns: (vx, vy, omega, kick, dribble)
+        Returns: (vx, omega)
         Prioritizes UDP packet; falls back to Webots Keyboard.
         """
-        vx, vy, omega = 0.0, 0.0, 0.0
-        kick = 0
-        dribble = 0
+        vx, omega = 0.0, 0.0
         udp_received = False
 
         # Drain socket buffer to get the freshest UDP packet
@@ -55,10 +48,7 @@ class InputSense:
                 data, _ = self.sock.recvfrom(512)
                 packet = json.loads(data.decode("utf-8"))
                 vx = float(packet.get("vx", 0.0))
-                vy = float(packet.get("vy", 0.0))
-                omega = float(packet.get("w", 0.0))
-                kick = int(packet.get("k", 0))
-                dribble = int(packet.get("d", 0))
+                omega = float(packet.get("w", packet.get("omega", 0.0)))
                 udp_received = True
                 self.last_udp_time = current_time_ms
             except (BlockingIOError, socket.error):
@@ -67,9 +57,9 @@ class InputSense:
                 print(f"[MARUK SENSE] UDP parse warning: {e}")
                 break
 
-        # If UDP is fresh, use it
+        # If UDP packet is fresh, return it
         if udp_received or (current_time_ms - self.last_udp_time < FAILSAFE_TIMEOUT_MS and self.last_udp_time > 0):
-            return vx, vy, omega, kick, dribble
+            return vx, omega
 
         # Fallback: Webots Keyboard directly inside 3D viewport
         key = self.keyboard.getKey()
@@ -78,41 +68,26 @@ class InputSense:
                 vx += 1.0
             elif key in (ord('S'), Keyboard.DOWN):
                 vx -= 1.0
-            elif key == ord('D'):
-                vy += 1.0
-            elif key == ord('A'):
-                vy -= 1.0
-            elif key in (ord('E'), Keyboard.RIGHT):
-                omega += 1.0
-            elif key in (ord('Q'), Keyboard.LEFT):
-                omega -= 1.0
-            elif key == ord(' '):
-                kick = 1
-            elif key in (Keyboard.SHIFT, ord('R')):
-                self.dribble_toggle = not self.dribble_toggle
+            if key in (ord('D'), Keyboard.RIGHT):
+                omega += 1.0   # Turn Right (CW)
+            elif key in (ord('A'), Keyboard.LEFT):
+                omega -= 1.0   # Turn Left (CCW)
 
             key = self.keyboard.getKey()
 
-        dribble = 1 if self.dribble_toggle else 0
-        return vx, vy, omega, kick, dribble
+        return vx, omega
 
 # ==========================================
-# LAYER 2: THINK (Kinematics & Logic)
+# LAYER 2: THINK (2WD Kinematics)
 # ==========================================
 class SoccerBrain:
     def __init__(self, max_speed: float):
         self.max_speed = max_speed
 
-    def process(self, vx: float, vy: float, omega: float, kick: int, dribble: int):
-        # 1. Compute wheel speeds using pure Mecanum kinematics
-        wheel_speeds = compute_mecanum_speeds(
-            vx=vx, vy=vy, omega=omega, max_speed=self.max_speed
+    def process(self, vx: float, omega: float):
+        return compute_differential_speeds(
+            vx=vx, omega=omega, max_speed=self.max_speed
         )
-
-        # 2. Dribbler roller target velocity
-        dribbler_vel = DRIBBLER_SPEED if dribble else 0.0
-
-        return wheel_speeds, dribbler_vel, bool(kick)
 
 # ==========================================
 # LAYER 3: ACT (Motor Actuation)
@@ -121,38 +96,18 @@ class SoccerActuators:
     def __init__(self, robot: Robot):
         self.robot = robot
 
-        # Wheel motors
-        self.fl_motor = robot.getDevice("fl_motor")
-        self.fr_motor = robot.getDevice("fr_motor")
-        self.rl_motor = robot.getDevice("rl_motor")
-        self.rr_motor = robot.getDevice("rr_motor")
+        # 2 Driven Wheels (Yellow Motors)
+        self.left_motor = robot.getDevice("left_motor")
+        self.right_motor = robot.getDevice("right_motor")
 
-        for motor in [self.fl_motor, self.fr_motor, self.rl_motor, self.rr_motor]:
-            motor.setPosition(float('inf'))
-            motor.setVelocity(0.0)
+        self.left_motor.setPosition(float('inf'))
+        self.right_motor.setPosition(float('inf'))
+        self.left_motor.setVelocity(0.0)
+        self.right_motor.setVelocity(0.0)
 
-        # Front dribbler roller
-        self.dribbler = robot.getDevice("dribbler_motor")
-        self.dribbler.setPosition(float('inf'))
-        self.dribbler.setVelocity(0.0)
-
-    def apply(self, wheel_speeds: dict, dribbler_vel: float, kick: bool):
-        # Apply velocities to all 4 wheels
-        self.fl_motor.setVelocity(wheel_speeds["fl"])
-        self.fr_motor.setVelocity(wheel_speeds["fr"])
-        self.rl_motor.setVelocity(wheel_speeds["rl"])
-        self.rr_motor.setVelocity(wheel_speeds["rr"])
-
-        # Spin dribbler
-        self.dribbler.setVelocity(dribbler_vel)
-
-        # Kicker pulse
-        if kick:
-            # High speed momentary lunge to kick the ball forward
-            self.fl_motor.setVelocity(MAX_WHEEL_SPEED)
-            self.fr_motor.setVelocity(MAX_WHEEL_SPEED)
-            self.rl_motor.setVelocity(MAX_WHEEL_SPEED)
-            self.rr_motor.setVelocity(MAX_WHEEL_SPEED)
+    def apply(self, wheel_speeds: dict):
+        self.left_motor.setVelocity(wheel_speeds["left"])
+        self.right_motor.setVelocity(wheel_speeds["right"])
 
 # ==========================================
 # SANG MANDOR (MAIN LOOP)
@@ -167,10 +122,11 @@ def main():
     act = SoccerActuators(robot)
 
     print("[MARUK] =========================================")
-    print("[MARUK] MARUK RC Soccer Bot Controller READY!")
-    print("[MARUK] SENSE: UDP 5005 + Webots Keyboard (WASD/QE)")
-    print("[MARUK] THINK: 4-Wheel Mecanum Kinematics")
-    print("[MARUK] ACT:   4 Wheel Motors + Front Dribbler")
+    print("[MARUK] MARUK 2WD Robot Soccer Controller READY!")
+    print("[MARUK] Regulations: MIT-WEEK 2026 Compliant")
+    print("[MARUK] SENSE: UDP 5005 / Webots Keyboard (WASD)")
+    print("[MARUK] THINK: 2WD Differential Drive Mixing")
+    print("[MARUK] ACT:   Left & Right Yellow TT Motors")
     print("[MARUK] =========================================")
 
     step_count = 0
@@ -179,13 +135,13 @@ def main():
         step_count += 1
 
         # 1. SENSE
-        vx, vy, omega, kick, dribble = sense.read(current_time_ms)
+        vx, omega = sense.read(current_time_ms)
 
         # 2. THINK
-        wheel_speeds, dribbler_vel, is_kicking = brain.process(vx, vy, omega, kick, dribble)
+        wheel_speeds = brain.process(vx, omega)
 
         # 3. ACT
-        act.apply(wheel_speeds, dribbler_vel, is_kicking)
+        act.apply(wheel_speeds)
 
 if __name__ == "__main__":
     main()
