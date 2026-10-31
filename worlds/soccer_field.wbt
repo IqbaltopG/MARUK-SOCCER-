@@ -9,19 +9,19 @@ WorldInfo {
     "Field: 244 cm x 122 cm"
     "Goals: 38 cm x 20 cm"
     "Ball: 4 cm Pingpong Ball"
-    "Robot: MARUK 2WD + Caster Wheels + Elevated Front Plate"
+    "Robot: MARUK 2WD Rocket Speed Edition"
   ]
   title "MIT-WEEK 2026 Robot Soccer"
   basicTimeStep 16
   contactProperties [
-    # Roda karet belakang: Grip maksimal ke karpet
+    # Roda karet belakang: Grip maksimal ke karpet (Instant launch)
     ContactProperties {
       material1 "wheel"
       material2 "ground"
-      coulombFriction [ 3.0 ]
+      coulombFriction [ 3.5 ]
       bounce 0
     }
-    # Roda kastor depan: Licin tanpa gesekan (Teflon 0.0)
+    # Roda kastor depan: Licin tanpa hambatan (Teflon 0.0)
     ContactProperties {
       material1 "caster"
       material2 "ground"
@@ -33,14 +33,14 @@ WorldInfo {
       material1 "bumper"
       material2 "ball"
       coulombFriction [ 0.9 ]
-      bounce 0.3
+      bounce 0.35
       bounceVelocity 0.05
     }
     # Bola pingpong ke karpet
     ContactProperties {
       material1 "ball"
       material2 "ground"
-      coulombFriction [ 0.6 ]
+      coulombFriction [ 0.5 ]
       bounce 0.35
       bounceVelocity 0.05
     }
@@ -266,8 +266,8 @@ DEF BALL Solid {
 
 # ==========================================
 # ROBOT MARUK 2WD + KASTOR WHEEL + PLAT DEPAN DITINGGIKAN
-# Plat Depan: Ground Clearance 12 mm di atas lantai (Anti-Ngesrok Total!)
-# Dimensi: 16cm x 16cm x 7cm (< 18x18cm)
+# Ground Clearance: 12 mm di atas lantai (Anti-Ngesrok)
+# Kecepatan: Rocket Boosted (maxVelocity 80 rad/s, maxTorque 15 Nm)
 # ==========================================
 DEF MARUK_BOT Robot {
   translation -0.45 0.0 0.0325
@@ -285,8 +285,7 @@ DEF MARUK_BOT Robot {
       }
     }
     # 2. PLAT DEPAN LURUS DITINGGIKAN (ELEVATED FLAT BOARD)
-    # Ground Clearance: 12 mm di atas lantai (TIDAK AKAN PERNAH KENGESEK LANTAI)
-    # Dimensi: Panjang 16cm, Tinggi 3.8cm, Tebal 6mm
+    # Ground Clearance: 12 mm di atas lantai (Zero Drag)
     Pose {
       translation 0.073 0 -0.0015
       children [
@@ -334,9 +333,8 @@ DEF MARUK_BOT Robot {
       device [
         RotationalMotor {
           name "left_motor"
-          maxVelocity 50
-          maxTorque 3.5
-          acceleration 80
+          maxVelocity 80
+          maxTorque 15
         }
       ]
       endPoint Solid {
@@ -373,9 +371,8 @@ DEF MARUK_BOT Robot {
       device [
         RotationalMotor {
           name "right_motor"
-          maxVelocity 50
-          maxTorque 3.5
-          acceleration 80
+          maxVelocity 80
+          maxTorque 15
         }
       ]
       endPoint Solid {
@@ -402,12 +399,8 @@ DEF MARUK_BOT Robot {
   }
   physics Physics {
     density -1
-    mass 0.55
+    mass 0.40
     centerOfMass [ 0.01 0 -0.012 ]
-    damping Damping {
-      linear 0.2
-      angular 0.8
-    }
   }
   controller "maruk_soccer"
 }

@@ -15,7 +15,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 from kinematics import compute_differential_speeds
 
 TIME_STEP = 16          # 16 ms simulation step (~60 FPS physics)
-MAX_WHEEL_SPEED = 45.0  # Kecepatan gahar boosted (Gareth Bale Sprint Speed)
+MAX_WHEEL_SPEED = 60.0  # Kecepatan Rocket Super (60 rad/s = 2.0 m/s = GARETH BALE SPRINT)
 UDP_PORT = 5005
 FAILSAFE_TIMEOUT_MS = 400
 
