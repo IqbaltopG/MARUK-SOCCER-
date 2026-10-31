@@ -9,7 +9,7 @@ WorldInfo {
     "Field: 244 cm x 122 cm"
     "Goals: 38 cm x 20 cm"
     "Ball: 4 cm Pingpong Ball"
-    "Robot: MARUK 2WD Persegi Flat (Zero Wobble Skid Plate)"
+    "Robot: MARUK 2WD + Caster Wheels + Elevated Front Plate"
   ]
   title "MIT-WEEK 2026 Robot Soccer"
   basicTimeStep 16
@@ -21,19 +21,19 @@ WorldInfo {
       coulombFriction [ 3.0 ]
       bounce 0
     }
-    # Plat bawah persegi robot: Meluncur rata tanpa hambatan (Teflon Skid 0.0)
+    # Roda kastor depan: Licin tanpa gesekan (Teflon 0.0)
     ContactProperties {
-      material1 "skid"
+      material1 "caster"
       material2 "ground"
       coulombFriction [ 0.0 ]
       bounce 0
     }
-    # Benturan bumper depan ke bola pingpong
+    # Benturan plat bumper depan ke bola pingpong
     ContactProperties {
-      material1 "skid"
+      material1 "bumper"
       material2 "ball"
-      coulombFriction [ 0.8 ]
-      bounce 0.25
+      coulombFriction [ 0.9 ]
+      bounce 0.3
       bounceVelocity 0.05
     }
     # Bola pingpong ke karpet
@@ -265,15 +265,15 @@ DEF BALL Solid {
 }
 
 # ==========================================
-# ROBOT MARUK 2WD PERSEGI FLAT (SOLID SKID BASE)
+# ROBOT MARUK 2WD + KASTOR WHEEL + PLAT DEPAN DITINGGIKAN
+# Plat Depan: Ground Clearance 12 mm di atas lantai (Anti-Ngesrok Total!)
 # Dimensi: 16cm x 16cm x 7cm (< 18x18cm)
-# Rata Sempurna, Tanpa Tonjolan Bulat, Anti-Oleng 100%
 # ==========================================
 DEF MARUK_BOT Robot {
   translation -0.45 0.0 0.0325
   rotation 0 0 1 0
   children [
-    # 1. Bodi Sasis Persegi Utama (14cm x 12cm x 3.5cm)
+    # 1. Bodi Sasis Utama
     DEF BODY_SHAPE Shape {
       appearance PBRAppearance {
         baseColor 0.15 0.18 0.22
@@ -284,10 +284,11 @@ DEF MARUK_BOT Robot {
         size 0.14 0.12 0.035
       }
     }
-    # 2. Papan Bumper Depan Lurus (16cm x 4cm x 6mm)
-    # Rata sempurna, clearance aman 5mm di atas lantai
+    # 2. PLAT DEPAN LURUS DITINGGIKAN (ELEVATED FLAT BOARD)
+    # Ground Clearance: 12 mm di atas lantai (TIDAK AKAN PERNAH KENGESEK LANTAI)
+    # Dimensi: Panjang 16cm, Tinggi 3.8cm, Tebal 6mm
     Pose {
-      translation 0.073 0 -0.0065
+      translation 0.073 0 -0.0015
       children [
         DEF FLAT_BUMPER Shape {
           appearance PBRAppearance {
@@ -296,29 +297,35 @@ DEF MARUK_BOT Robot {
             metalness 0.1
           }
           geometry Box {
-            size 0.006 0.16 0.040
+            size 0.006 0.16 0.038
           }
         }
       ]
     }
-    # 3. Plat Persegi Slider Bawah Depan (Teflon Skid Plate Persegi Flat)
-    # Luas kontak lebar rata menapak lantai: 6cm x 10cm x 1.5cm
+    # 3. Roda Kastor Kiri Depan (Teflon Caster Wheel)
     Pose {
-      translation 0.040 0 -0.025
+      translation 0.055 0.048 -0.020
       children [
-        DEF SKID_PLATE Shape {
+        DEF CASTER_SHAPE Shape {
           appearance PBRAppearance {
-            baseColor 0.9 0.9 0.92
+            baseColor 0.8 0.8 0.85
             roughness 0.05
-            metalness 0.8
+            metalness 0.9
           }
-          geometry Box {
-            size 0.06 0.10 0.015
+          geometry Sphere {
+            radius 0.0125
           }
         }
       ]
     }
-    # 4. Roda Kiri Belakang (Motor Kuning)
+    # 4. Roda Kastor Kanan Depan (Teflon Caster Wheel)
+    Pose {
+      translation 0.055 -0.048 -0.020
+      children [
+        USE CASTER_SHAPE
+      ]
+    }
+    # 5. Roda Kiri Belakang (Motor Kuning)
     HingeJoint {
       jointParameters HingeJointParameters {
         axis 0 1 0
@@ -357,7 +364,7 @@ DEF MARUK_BOT Robot {
         }
       }
     }
-    # 5. Roda Kanan Belakang (Motor Kuning)
+    # 6. Roda Kanan Belakang (Motor Kuning)
     HingeJoint {
       jointParameters HingeJointParameters {
         axis 0 1 0
@@ -384,12 +391,13 @@ DEF MARUK_BOT Robot {
       }
     }
   ]
-  contactMaterial "skid"
+  contactMaterial "caster"
   boundingObject Group {
     children [
       USE BODY_SHAPE
-      Pose { translation 0.073 0 -0.0065 children [ Box { size 0.006 0.16 0.040 } ] }
-      Pose { translation 0.040 0 -0.025 children [ Box { size 0.06 0.10 0.015 } ] }
+      Pose { translation 0.073 0 -0.0015 children [ Box { size 0.006 0.16 0.038 } ] }
+      Pose { translation 0.055 0.048 -0.020 children [ Sphere { radius 0.0125 } ] }
+      Pose { translation 0.055 -0.048 -0.020 children [ Sphere { radius 0.0125 } ] }
     ]
   }
   physics Physics {
