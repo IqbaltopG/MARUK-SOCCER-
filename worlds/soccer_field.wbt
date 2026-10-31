@@ -8,40 +8,40 @@ WorldInfo {
     "MIT-WEEK 2026 Robot Car Soccer Arena"
     "Field: 244 cm x 122 cm"
     "Goals: 38 cm x 20 cm"
-    "Ball: 4 cm Pingpong Ball (Tuned Collision Physics)"
-    "Robot: MARUK 2WD + Dual Caster (Zero Wobble, High Traction)"
+    "Ball: 4 cm Pingpong Ball"
+    "Robot: MARUK 2WD Persegi Flat (Zero Wobble Skid Plate)"
   ]
   title "MIT-WEEK 2026 Robot Soccer"
   basicTimeStep 16
   contactProperties [
-    # Roda karet belakang: Traksi maksimal di karpet (Grip 3.0)
+    # Roda karet belakang: Grip maksimal ke karpet
     ContactProperties {
       material1 "wheel"
       material2 "ground"
       coulombFriction [ 3.0 ]
       bounce 0
     }
-    # Roda kastor depan: Licin tanpa gesekan (Teflon 0.0)
+    # Plat bawah persegi robot: Meluncur rata tanpa hambatan (Teflon Skid 0.0)
     ContactProperties {
-      material1 "caster"
+      material1 "skid"
       material2 "ground"
       coulombFriction [ 0.0 ]
       bounce 0
     }
-    # Benturan bumper plat ke bola: Solid, mantap, tidak slip
+    # Benturan bumper depan ke bola pingpong
     ContactProperties {
-      material1 "bumper"
+      material1 "skid"
       material2 "ball"
-      coulombFriction [ 0.9 ]
-      bounce 0.3
+      coulombFriction [ 0.8 ]
+      bounce 0.25
       bounceVelocity 0.05
     }
-    # Bola pingpong ke karpet: Alami, menggelinding mulus
+    # Bola pingpong ke karpet
     ContactProperties {
       material1 "ball"
       material2 "ground"
       coulombFriction [ 0.6 ]
-      bounce 0.4
+      bounce 0.35
       bounceVelocity 0.05
     }
   ]
@@ -60,7 +60,6 @@ TexturedBackgroundLight {
 # ==========================================
 DEF SOCCER_FIELD Solid {
   children [
-    # Lapangan Karpet Hijau (2.44m x 1.22m)
     DEF GROUND Shape {
       appearance PBRAppearance {
         baseColor 0.08 0.45 0.15
@@ -235,7 +234,7 @@ DEF SOCCER_FIELD Solid {
 }
 
 # ==========================================
-# BOLA PINGPONG RESMI (Diameter 4cm, Tuned Contact Physics)
+# BOLA PINGPONG RESMI (Diameter 4cm, Massa 8g, Damping)
 # ==========================================
 DEF BALL Solid {
   translation 0.0 0.0 0.02
@@ -266,15 +265,15 @@ DEF BALL Solid {
 }
 
 # ==========================================
-# ROBOT MARUK 2WD + DUAL KASTOR + BUMPER LURUS
-# Ketinggian Bumper: 6mm di atas lantai (Anti Gesek & Anti Oleng)
+# ROBOT MARUK 2WD PERSEGI FLAT (SOLID SKID BASE)
 # Dimensi: 16cm x 16cm x 7cm (< 18x18cm)
+# Rata Sempurna, Tanpa Tonjolan Bulat, Anti-Oleng 100%
 # ==========================================
 DEF MARUK_BOT Robot {
   translation -0.45 0.0 0.0325
   rotation 0 0 1 0
   children [
-    # Sasis Utama
+    # 1. Bodi Sasis Persegi Utama (14cm x 12cm x 3.5cm)
     DEF BODY_SHAPE Shape {
       appearance PBRAppearance {
         baseColor 0.15 0.18 0.22
@@ -285,10 +284,9 @@ DEF MARUK_BOT Robot {
         size 0.14 0.12 0.035
       }
     }
-    # BUMPER DEPAN LURUS RESMI (STRICT FLAT BOARD)
-    # Panjang 16cm, Tinggi 4cm, Tebal 6mm
-    # Posisi Z: Bottom = +6mm dari lantai (Zero Ground Scrape!)
-    DEF BUMPER_SOLID Solid {
+    # 2. Papan Bumper Depan Lurus (16cm x 4cm x 6mm)
+    # Rata sempurna, clearance aman 5mm di atas lantai
+    Pose {
       translation 0.073 0 -0.0065
       children [
         DEF FLAT_BUMPER Shape {
@@ -302,14 +300,25 @@ DEF MARUK_BOT Robot {
           }
         }
       ]
-      contactMaterial "bumper"
-      boundingObject USE FLAT_BUMPER
-      physics Physics {
-        density -1
-        mass 0.04
-      }
     }
-    # Roda Kiri Belakang (Motor Kuning)
+    # 3. Plat Persegi Slider Bawah Depan (Teflon Skid Plate Persegi Flat)
+    # Luas kontak lebar rata menapak lantai: 6cm x 10cm x 1.5cm
+    Pose {
+      translation 0.040 0 -0.025
+      children [
+        DEF SKID_PLATE Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.9 0.92
+            roughness 0.05
+            metalness 0.8
+          }
+          geometry Box {
+            size 0.06 0.10 0.015
+          }
+        }
+      ]
+    }
+    # 4. Roda Kiri Belakang (Motor Kuning)
     HingeJoint {
       jointParameters HingeJointParameters {
         axis 0 1 0
@@ -319,7 +328,8 @@ DEF MARUK_BOT Robot {
         RotationalMotor {
           name "left_motor"
           maxVelocity 50
-          maxTorque 30
+          maxTorque 3.5
+          acceleration 80
         }
       ]
       endPoint Solid {
@@ -347,7 +357,7 @@ DEF MARUK_BOT Robot {
         }
       }
     }
-    # Roda Kanan Belakang (Motor Kuning)
+    # 5. Roda Kanan Belakang (Motor Kuning)
     HingeJoint {
       jointParameters HingeJointParameters {
         axis 0 1 0
@@ -357,7 +367,8 @@ DEF MARUK_BOT Robot {
         RotationalMotor {
           name "right_motor"
           maxVelocity 50
-          maxTorque 30
+          maxTorque 3.5
+          acceleration 80
         }
       ]
       endPoint Solid {
@@ -372,47 +383,23 @@ DEF MARUK_BOT Robot {
         physics USE WHEEL_PHYSICS
       }
     }
-    # Roda Kastor Kiri (Penyeimbang Depan Kiri)
-    DEF CASTER_L Solid {
-      translation 0.055 0.048 -0.020
-      children [
-        DEF CASTER_SHAPE Shape {
-          appearance PBRAppearance {
-            baseColor 0.8 0.8 0.85
-            roughness 0.05
-            metalness 0.9
-          }
-          geometry Sphere {
-            radius 0.0125
-          }
-        }
-      ]
-      contactMaterial "caster"
-      boundingObject USE CASTER_SHAPE
-      physics Physics {
-        density -1
-        mass 0.015
-      }
-    }
-    # Roda Kastor Kanan (Penyeimbang Depan Kanan)
-    DEF CASTER_R Solid {
-      translation 0.055 -0.048 -0.020
-      children [
-        USE CASTER_SHAPE
-      ]
-      contactMaterial "caster"
-      boundingObject USE CASTER_SHAPE
-      physics Physics {
-        density -1
-        mass 0.015
-      }
-    }
   ]
-  contactMaterial "caster"
-  boundingObject USE BODY_SHAPE
+  contactMaterial "skid"
+  boundingObject Group {
+    children [
+      USE BODY_SHAPE
+      Pose { translation 0.073 0 -0.0065 children [ Box { size 0.006 0.16 0.040 } ] }
+      Pose { translation 0.040 0 -0.025 children [ Box { size 0.06 0.10 0.015 } ] }
+    ]
+  }
   physics Physics {
     density -1
-    mass 0.35
+    mass 0.55
+    centerOfMass [ 0.01 0 -0.012 ]
+    damping Damping {
+      linear 0.2
+      angular 0.8
+    }
   }
   controller "maruk_soccer"
 }
