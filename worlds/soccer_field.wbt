@@ -2,30 +2,47 @@
 
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
-EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/balls/protos/SoccerBall.proto"
 
 WorldInfo {
   info [
     "MIT-WEEK 2026 Robot Car Soccer Arena"
     "Field: 244 cm x 122 cm"
     "Goals: 38 cm x 20 cm"
-    "Ball: 4 cm Pingpong Ball"
-    "Robot: MARUK 2WD + Caster + Flat Board (< 18x18 cm)"
+    "Ball: 4 cm Pingpong Ball (Tuned Collision Physics)"
+    "Robot: MARUK 2WD + Dual Caster (Zero Wobble, High Traction)"
   ]
   title "MIT-WEEK 2026 Robot Soccer"
   basicTimeStep 16
   contactProperties [
+    # Roda karet belakang: Traksi maksimal di karpet (Grip 3.0)
     ContactProperties {
       material1 "wheel"
       material2 "ground"
-      coulombFriction [ 2.5 ]
+      coulombFriction [ 3.0 ]
       bounce 0
     }
+    # Roda kastor depan: Licin tanpa gesekan (Teflon 0.0)
     ContactProperties {
       material1 "caster"
       material2 "ground"
       coulombFriction [ 0.0 ]
       bounce 0
+    }
+    # Benturan bumper plat ke bola: Solid, mantap, tidak slip
+    ContactProperties {
+      material1 "bumper"
+      material2 "ball"
+      coulombFriction [ 0.9 ]
+      bounce 0.3
+      bounceVelocity 0.05
+    }
+    # Bola pingpong ke karpet: Alami, menggelinding mulus
+    ContactProperties {
+      material1 "ball"
+      material2 "ground"
+      coulombFriction [ 0.6 ]
+      bounce 0.4
+      bounceVelocity 0.05
     }
   ]
 }
@@ -218,21 +235,43 @@ DEF SOCCER_FIELD Solid {
 }
 
 # ==========================================
-# BOLA PINGPONG RESMI (Diameter 4cm, Massa 3g)
+# BOLA PINGPONG RESMI (Diameter 4cm, Tuned Contact Physics)
 # ==========================================
-DEF BALL SoccerBall {
+DEF BALL Solid {
   translation 0.0 0.0 0.02
-  rotation 0 0 1 0
-  radius 0.02
-  mass 0.003
+  children [
+    DEF PINGPONG_SHAPE Shape {
+      appearance PBRAppearance {
+        baseColor 1 0.72 0.08
+        roughness 0.3
+        metalness 0
+      }
+      geometry Sphere {
+        radius 0.02
+        subdivision 3
+      }
+    }
+  ]
+  name "pingpong ball"
+  contactMaterial "ball"
+  boundingObject USE PINGPONG_SHAPE
+  physics Physics {
+    density -1
+    mass 0.008
+    damping Damping {
+      linear 0.25
+      angular 0.25
+    }
+  }
 }
 
 # ==========================================
-# ROBOT MARUK 2WD + KASTOR + PAPAN LURUS
-# Dimensi: 16cm x 16cm x 7cm (Lolos regulasi < 18x18cm)
+# ROBOT MARUK 2WD + DUAL KASTOR + BUMPER LURUS
+# Ketinggian Bumper: 6mm di atas lantai (Anti Gesek & Anti Oleng)
+# Dimensi: 16cm x 16cm x 7cm (< 18x18cm)
 # ==========================================
 DEF MARUK_BOT Robot {
-  translation -0.45 0.0 0.035
+  translation -0.45 0.0 0.0325
   rotation 0 0 1 0
   children [
     # Sasis Utama
@@ -243,31 +282,38 @@ DEF MARUK_BOT Robot {
         metalness 0.6
       }
       geometry Box {
-        size 0.14 0.12 0.04
+        size 0.14 0.12 0.035
       }
     }
     # BUMPER DEPAN LURUS RESMI (STRICT FLAT BOARD)
-    # Panjang 16cm, Tinggi 4.5cm, Tebal 6mm - RATA TANPA LEKUKAN
-    Pose {
-      translation 0.073 0 0.010
+    # Panjang 16cm, Tinggi 4cm, Tebal 6mm
+    # Posisi Z: Bottom = +6mm dari lantai (Zero Ground Scrape!)
+    DEF BUMPER_SOLID Solid {
+      translation 0.073 0 -0.0065
       children [
         DEF FLAT_BUMPER Shape {
           appearance PBRAppearance {
             baseColor 0.9 0.2 0.2
-            roughness 0.2
+            roughness 0.25
             metalness 0.1
           }
           geometry Box {
-            size 0.006 0.16 0.045
+            size 0.006 0.16 0.040
           }
         }
       ]
+      contactMaterial "bumper"
+      boundingObject USE FLAT_BUMPER
+      physics Physics {
+        density -1
+        mass 0.04
+      }
     }
-    # Roda Kiri Belakang
+    # Roda Kiri Belakang (Motor Kuning)
     HingeJoint {
       jointParameters HingeJointParameters {
         axis 0 1 0
-        anchor -0.035 0.068 -0.002
+        anchor -0.035 0.068 0.0
       }
       device [
         RotationalMotor {
@@ -277,7 +323,7 @@ DEF MARUK_BOT Robot {
         }
       ]
       endPoint Solid {
-        translation -0.035 0.068 -0.002
+        translation -0.035 0.068 0.0
         rotation 1 0 0 1.5708
         children [
           DEF WHEEL_SHAPE Shape {
@@ -301,11 +347,11 @@ DEF MARUK_BOT Robot {
         }
       }
     }
-    # Roda Kanan Belakang
+    # Roda Kanan Belakang (Motor Kuning)
     HingeJoint {
       jointParameters HingeJointParameters {
         axis 0 1 0
-        anchor -0.035 -0.068 -0.002
+        anchor -0.035 -0.068 0.0
       }
       device [
         RotationalMotor {
@@ -315,7 +361,7 @@ DEF MARUK_BOT Robot {
         }
       ]
       endPoint Solid {
-        translation -0.035 -0.068 -0.002
+        translation -0.035 -0.068 0.0
         rotation 1 0 0 1.5708
         children [
           USE WHEEL_SHAPE
@@ -326,9 +372,9 @@ DEF MARUK_BOT Robot {
         physics USE WHEEL_PHYSICS
       }
     }
-    # Roda Kastor Licin (Teflon Ball Bearing Caster di Depan Tengah)
-    Pose {
-      translation 0.055 0 -0.022
+    # Roda Kastor Kiri (Penyeimbang Depan Kiri)
+    DEF CASTER_L Solid {
+      translation 0.055 0.048 -0.020
       children [
         DEF CASTER_SHAPE Shape {
           appearance PBRAppearance {
@@ -341,19 +387,32 @@ DEF MARUK_BOT Robot {
           }
         }
       ]
+      contactMaterial "caster"
+      boundingObject USE CASTER_SHAPE
+      physics Physics {
+        density -1
+        mass 0.015
+      }
+    }
+    # Roda Kastor Kanan (Penyeimbang Depan Kanan)
+    DEF CASTER_R Solid {
+      translation 0.055 -0.048 -0.020
+      children [
+        USE CASTER_SHAPE
+      ]
+      contactMaterial "caster"
+      boundingObject USE CASTER_SHAPE
+      physics Physics {
+        density -1
+        mass 0.015
+      }
     }
   ]
   contactMaterial "caster"
-  boundingObject Group {
-    children [
-      USE BODY_SHAPE
-      Pose { translation 0.073 0 0.010 children [ Box { size 0.006 0.16 0.045 } ] }
-      Pose { translation 0.055 0 -0.022 children [ Sphere { radius 0.0125 } ] }
-    ]
-  }
+  boundingObject USE BODY_SHAPE
   physics Physics {
     density -1
-    mass 0.45
+    mass 0.35
   }
   controller "maruk_soccer"
 }
