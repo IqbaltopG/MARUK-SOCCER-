@@ -15,7 +15,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 from kinematics import compute_differential_speeds
 
 TIME_STEP = 16          # 16 ms simulation step (~60 FPS physics)
-MAX_WHEEL_SPEED = 14.0  # Max rad/s for standard yellow TT motor (~200 RPM)
+MAX_WHEEL_SPEED = 32.0  # Kecepatan gahar boosted (sebelumnya cuma 14.0, pantes lambat wkwk)
 UDP_PORT = 5005
 FAILSAFE_TIMEOUT_MS = 400
 

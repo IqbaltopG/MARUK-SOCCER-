@@ -98,7 +98,7 @@ def main():
             if joystick.get_numbuttons() > 5 and joystick.get_button(5):
                 turbo = True
 
-        speed_scale = args.speed if turbo else args.speed * 0.8
+        speed_scale = args.speed * 1.6 if turbo else args.speed
         vx = round(vx * speed_scale, 3)
         omega = round(omega * speed_scale, 3)
 
@@ -120,7 +120,7 @@ def main():
         target_info = font.render(f"Target: {target_addr[0]}:{target_addr[1]}", True, (180, 180, 180))
         cmd_info = font.render(f"Forward (Vx): {vx:+.2f}   Steer (W): {omega:+.2f}", True, (255, 255, 255))
         mode_col = (255, 200, 50) if turbo else (100, 200, 255)
-        mode_info = font.render(f"Speed Mode:   {'TURBO SPRINT (100%)' if turbo else 'PRECISION DRIBBLE (80%)'}", True, mode_col)
+        mode_info = font.render(f"Speed Mode:   {'TURBO SPRINT (160% GAS POL)' if turbo else 'NORMAL (100%)'}", True, mode_col)
         help_info1 = font.render("W/S (or UP/DOWN): Drive Forward/Back", True, (140, 140, 160))
         help_info2 = font.render("A/D (or L/R):     Turn Left/Right", True, (140, 140, 160))
         help_info3 = font.render("SHIFT:            Hold for Turbo", True, (140, 140, 160))
